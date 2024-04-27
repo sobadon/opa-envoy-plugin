@@ -353,9 +353,6 @@ func (result *EvalResult) GetQueryParametersToSet() ([]*ext_core_v3.QueryParamet
 			return finalQueryParameters, nil
 		}
 
-		fmt.Printf("L356 val: %v\n", val)
-		fmt.Printf("L357 val type: %T\n", val)
-
 		switch val := val.(type) {
 		// case []map[string]interface{}:
 		case []interface{}:
