@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	ext_core_v3 "github.com/envoyproxy/go-control-plane/envoy/config/core/v3"
 	_structpb "github.com/golang/protobuf/ptypes/struct"
 	"google.golang.org/protobuf/proto"
 )
@@ -414,5 +415,92 @@ func TestNewEvalResultWithDecisionID(t *testing.T) {
 	}
 	if er.DecisionID != expectedDecisionID {
 		t.Errorf("Expected DecisionID to be '%v', got '%v'", expectedDecisionID, er.DecisionID)
+	}
+}
+
+func TestGetQueryParametersToSet(t *testing.T) {
+	tests := map[string]struct {
+		decision interface{}
+		exp      []*ext_core_v3.QueryParameter
+		wantErr  bool
+	}{
+		"bool_eval_result": {
+			true,
+			[]*ext_core_v3.QueryParameter{},
+			false,
+		},
+		"invalid_eval_result": {
+			"hello",
+			[]*ext_core_v3.QueryParameter{},
+			true,
+		},
+		"empty_map_result": {
+			map[string]interface{}{},
+			[]*ext_core_v3.QueryParameter{},
+			false,
+		},
+		"bad_header_value": {
+			map[string]interface{}{"query_parameters_to_set": "test"},
+			[]*ext_core_v3.QueryParameter{},
+			true,
+		},
+		"bad_string_array_header_value": {
+			map[string]interface{}{"query_parameters_to_set": []string{"foo", "bar"}},
+			[]*ext_core_v3.QueryParameter{},
+			true,
+		},
+		"ok1": {
+			map[string]interface{}{"query_parameters_to_set": []map[string]interface{}{
+				{"key": "abc", "value": "123"},
+			}},
+			[]*ext_core_v3.QueryParameter{
+				{
+					Key:   "abc",
+					Value: "123",
+				},
+			},
+			false,
+		},
+		"ok2": {
+			map[string]interface{}{"query_parameters_to_set": []map[string]interface{}{
+				{"key": "abc", "value": "123"},
+				{"key": "xyz", "value": "987"},
+			}},
+			[]*ext_core_v3.QueryParameter{
+				{
+					Key:   "abc",
+					Value: "123",
+				},
+				{
+					Key:   "xyz",
+					Value: "987",
+				},
+			},
+			false,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			er := EvalResult{
+				Decision: tc.decision,
+			}
+
+			result, err := er.GetQueryParametersToSet()
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("Expected error but got nil")
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("Unexpected error %v", err)
+				}
+
+				if !reflect.DeepEqual(tc.exp, result) {
+					t.Fatalf("Expected result %v but got %v", tc.exp, result)
+				}
+			}
+		})
 	}
 }

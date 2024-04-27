@@ -338,6 +338,37 @@ func (result *EvalResult) GetResponseEnvoyHTTPStatus() (*ext_type_v3.HttpStatus,
 	return status, nil
 }
 
+// GetQueryParametersToSet - returns the query paramters to set if they are part of the decision
+func (result *EvalResult) GetQueryParametersToSet() ([]*ext_core_v3.QueryParameter, error) {
+	finalQueryParameters := []*ext_core_v3.QueryParameter{}
+
+	switch decision := result.Decision.(type) {
+	case bool:
+		return finalQueryParameters, nil
+	case map[string]interface{}:
+		var ok bool
+		var val interface{}
+
+		if val, ok = decision["query_parameters_to_set"]; !ok {
+			return finalQueryParameters, nil
+		}
+
+		switch val := val.(type) {
+		case []map[string]interface{}:
+			result, err := transformToQueryParameters(val)
+			if err != nil {
+				return nil, err
+			}
+			finalQueryParameters = result
+		default:
+			return nil, fmt.Errorf("type assertion error")
+		}
+	default:
+		return nil, result.invalidDecisionErr()
+	}
+	return finalQueryParameters, nil
+}
+
 func transformToHTTPHeaderFormat(input interface{}, result *http.Header) error {
 
 	takeResponseHeaders := func(headers map[string]interface{}, targetHeaders *http.Header) error {
@@ -408,4 +439,34 @@ func transformHTTPHeaderToEnvoyHeaderValueOption(headers http.Header) ([]*ext_co
 	}
 
 	return responseHeaders, nil
+}
+
+// 暫定
+func transformToQueryParameters(input []map[string]interface{}) ([]*ext_core_v3.QueryParameter, error) {
+	result := []*ext_core_v3.QueryParameter{}
+	for _, val := range input {
+		paramKey := ""
+		paramValue := ""
+		for objKey, objValue := range val {
+			switch value := objValue.(type) {
+			case string:
+				if objKey == "key" {
+					paramKey = value
+				} else if objKey == "value" {
+					paramValue = value
+				} else {
+					return result, fmt.Errorf("invalid key '%s' for query parameter", objKey)
+				}
+			default:
+				return result, fmt.Errorf("type assertion error for query parameter '%s'", objKey)
+			}
+		}
+
+		result = append(result, &ext_core_v3.QueryParameter{
+			Key:   paramKey,
+			Value: paramValue,
+		})
+	}
+
+	return result, nil
 }
