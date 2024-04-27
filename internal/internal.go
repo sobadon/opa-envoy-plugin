@@ -494,11 +494,21 @@ func (p *envoyExtAuthzGrpcServer) check(ctx context.Context, req interface{}) (*
 				return nil, stop, &internalErr
 			}
 
+			// query_parameters_to_set
+			var queryParametersToSet []*ext_core_v3.QueryParameter
+			queryParametersToSet, err = result.GetQueryParametersToSet()
+			if err != nil {
+				err = errors.Wrap(err, "failed to get query parameters to set to upstream")
+				internalErr = internalError(EnvoyAuthResultErr, err)
+				return nil, stop, &internalErr
+			}
+
 			resp.HttpResponse = &ext_authz_v3.CheckResponse_OkResponse{
 				OkResponse: &ext_authz_v3.OkHttpResponse{
 					Headers:              responseHeaders,
 					HeadersToRemove:      headersToRemove,
 					ResponseHeadersToAdd: responseHeadersToAdd,
+					QueryParametersToSet: queryParametersToSet,
 				},
 			}
 		} else {
