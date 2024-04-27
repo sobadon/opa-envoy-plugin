@@ -450,8 +450,8 @@ func TestGetQueryParametersToSet(t *testing.T) {
 			true,
 		},
 		"ok1": {
-			map[string]interface{}{"query_parameters_to_set": []map[string]interface{}{
-				{"key": "abc", "value": "123"},
+			map[string]interface{}{"query_parameters_to_set": []interface{}{
+				map[string]interface{}{"key": "abc", "value": "123"},
 			}},
 			[]*ext_core_v3.QueryParameter{
 				{
@@ -462,9 +462,9 @@ func TestGetQueryParametersToSet(t *testing.T) {
 			false,
 		},
 		"ok2": {
-			map[string]interface{}{"query_parameters_to_set": []map[string]interface{}{
-				{"key": "abc", "value": "123"},
-				{"key": "xyz", "value": "987"},
+			map[string]interface{}{"query_parameters_to_set": []interface{}{
+				map[string]interface{}{"key": "abc", "value": "123"},
+				map[string]interface{}{"key": "xyz", "value": "987"},
 			}},
 			[]*ext_core_v3.QueryParameter{
 				{
@@ -474,6 +474,28 @@ func TestGetQueryParametersToSet(t *testing.T) {
 				{
 					Key:   "xyz",
 					Value: "987",
+				},
+			},
+			false,
+		},
+		"ok3": {
+			map[string]interface{}{"query_parameters_to_set": []interface{}{
+				map[string]interface{}{"key": "abc", "value": "111=222"},
+				map[string]interface{}{"key": "abc", "value": `111%3D222`},
+				map[string]interface{}{"key": "abc", "value": `111%%3D222`},
+			}},
+			[]*ext_core_v3.QueryParameter{
+				{
+					Key:   "abc",
+					Value: "111=222",
+				},
+				{
+					Key:   "abc",
+					Value: `111%3D222`,
+				},
+				{
+					Key:   "abc",
+					Value: `111%%3D222`,
 				},
 			},
 			false,

@@ -353,8 +353,12 @@ func (result *EvalResult) GetQueryParametersToSet() ([]*ext_core_v3.QueryParamet
 			return finalQueryParameters, nil
 		}
 
+		fmt.Printf("L356 val: %v\n", val)
+		fmt.Printf("L357 val type: %T\n", val)
+
 		switch val := val.(type) {
-		case []map[string]interface{}:
+		// case []map[string]interface{}:
+		case []interface{}:
 			result, err := transformToQueryParameters(val)
 			if err != nil {
 				return nil, err
@@ -442,9 +446,16 @@ func transformHTTPHeaderToEnvoyHeaderValueOption(headers http.Header) ([]*ext_co
 }
 
 // 暫定
-func transformToQueryParameters(input []map[string]interface{}) ([]*ext_core_v3.QueryParameter, error) {
+// func transformToQueryParameters(input []map[string]interface{}) ([]*ext_core_v3.QueryParameter, error) {
+func transformToQueryParameters(input []interface{}) ([]*ext_core_v3.QueryParameter, error) {
 	result := []*ext_core_v3.QueryParameter{}
-	for _, val := range input {
+	for _, elem := range input {
+		// elem = {"key": "key1", "value": "value1"}
+		val, ok := elem.(map[string]interface{})
+		if !ok {
+			return result, fmt.Errorf("type assertion error")
+		}
+
 		paramKey := ""
 		paramValue := ""
 		for objKey, objValue := range val {

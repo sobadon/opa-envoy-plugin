@@ -1636,6 +1636,54 @@ func TestCheckAllowObjectDecisionMultiValuedHeaders(t *testing.T) {
 	assertHeaderValues(t, expectedHeaders, headersToAdd)
 }
 
+func TestCheckAllowObjectDecisionQueryParametersToSet(t *testing.T) {
+	var req ext_authz.CheckRequest
+	if err := util.Unmarshal([]byte(exampleAllowedRequestParsedPath), &req); err != nil {
+		panic(err)
+	}
+
+	module := `
+		package envoy.authz
+
+		default allow = false
+
+		allow {
+			input.parsed_path = ["my", "test", "path"]
+		}
+
+		query_parameters_to_set = [{"key": "abc", "value": "123"}, {"key": "xyz", "value": "987"}]
+
+		result["allowed"] = allow
+		result["query_parameters_to_set"] = query_parameters_to_set`
+
+	server := testAuthzServerWithModule(module, "envoy/authz/result", nil, withCustomLogger(&testPlugin{}))
+
+	ctx := context.Background()
+	output, err := server.Check(ctx, &req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if output.Status.Code != int32(code.Code_OK) {
+		t.Fatalf("Expected request to be allowed but got: %v", output)
+	}
+
+	response := output.GetOkResponse()
+	if response == nil {
+		t.Fatal("Expected OkHttpResponse struct but got nil")
+	}
+
+	queryParametersToSet := response.GetQueryParametersToSet()
+	expectedQueryParametersToSet := []*ext_core.QueryParameter{
+		{Key: "abc", Value: "123"},
+		{Key: "xyz", Value: "987"},
+	}
+
+	if !reflect.DeepEqual(expectedQueryParametersToSet, queryParametersToSet) {
+		t.Fatalf("Expected query parameters %v but got %v", expectedQueryParametersToSet, queryParametersToSet)
+	}
+}
+
 func TestCheckAllowObjectDecision(t *testing.T) {
 	// Example Envoy Check Request for input:
 	// curl --user  bob:password  -o /dev/null -s -w "%{http_code}\n" http://${GATEWAY_URL}/api/v1/products
